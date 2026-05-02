@@ -3,9 +3,10 @@ secrets/secrets.env
 secrets/*.env
 !secrets/secrets.example.env
 
-# Local overrides (machine-specific)
+# Local overrides (machine-specific) — but keep templated examples committed
 *.local.json
 *.local.*
+!templates/*.example.*
 
 # Generated artifacts (install.sh outputs)
 **/mcp.json
