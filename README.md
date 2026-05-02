@@ -39,14 +39,40 @@ To get future updates: `git pull`. No re-install needed (unless you added new se
 | `platform/macos/` | (varies) | macOS-only extras |
 | `platform/linux/` | (varies) | Linux-only extras |
 | `platform/windows/` | (varies) | Windows-only extras |
-| `templates/` | not installed | Boilerplate for new project `.claude/` directories |
+| `templates/` | not installed | Boilerplate for new project `.claude/` and `settings.local.json` |
 | `secrets/secrets.env` | (read by installer) | **Gitignored.** Real API keys |
 
 ### What is NOT here
 
 - `~/.claude/plugins/` — plugins auto-sync via Claude Code's marketplace; tracking them in git would fight the harness
-- `~/.claude/settings.local.json` — local permission overrides; per-machine by design
+- `~/.claude/settings.local.json` — per-machine overrides (extra plugins, disabled plugins, machine-only permissions); see "Per-machine local plugins" below
 - Project-level `.claude/` directories (e.g. `<repo>/.claude/`) — those belong to that project's git repo (see `templates/`)
+
+---
+
+## Per-machine local plugins
+
+`claude/settings.json` lists only the plugins enabled on **every** machine. Machine-specific plugins live in `~/.claude/settings.local.json`, which Claude Code merges on top of the common file by `enabledPlugins` key. The file is gitignored (`*.local.json`).
+
+**Add a per-machine plugin:**
+
+```bash
+cp templates/settings.local.example.json ~/.claude/settings.local.json
+$EDITOR ~/.claude/settings.local.json   # add only the plugins you want here
+```
+
+**Disable a common plugin on this machine only:**
+
+```jsonc
+// ~/.claude/settings.local.json
+{
+  "enabledPlugins": {
+    "linear@claude-plugins-official": false
+  }
+}
+```
+
+**Promotion to common** (when a plugin proves useful on a second machine): move the entry from your `settings.local.json` into the repo's `claude/settings.json`, commit, push, then pull on the other machines.
 
 ---
 
@@ -91,10 +117,11 @@ claude-settings/
 │   ├── linux/
 │   └── windows/
 │
-├── templates/                   # boilerplate for new project .claude/
+├── templates/                   # boilerplate for new project .claude/ + machine-local
 │   ├── project-settings.json
 │   ├── project-CLAUDE.md
-│   └── project-gitignore
+│   ├── project-gitignore
+│   └── settings.local.example.json
 │
 └── secrets/
     ├── secrets.example.env      # template, committed
@@ -137,7 +164,15 @@ If it's a **secret**, instead:
 ## Troubleshooting
 
 **Symlink already exists and points to old location**
-The installer detects this and replaces it. If something looks wrong, delete the link manually and re-run `./install.sh`.
+The installer detects this and replaces it. If a symlink already resolves to the correct repo source the installer skips it (idempotent).
+
+**A plugin I had enabled disappeared after `git pull`**
+It was likely per-machine — moved to `~/.claude/settings.local.json` on the editing machine. Add it to your own local file:
+```jsonc
+// ~/.claude/settings.local.json
+{ "enabledPlugins": { "the-plugin@claude-plugins-official": true } }
+```
+Then restart Claude Code. The plugin itself is still installed under `~/.claude/plugins/`; only its enabled flag was scoped per-machine.
 
 **`mcp.json` has literal `${VAR}` strings after install**
 Either `secrets/secrets.env` doesn't exist, or the variable name doesn't match. Re-check both files and re-run.
