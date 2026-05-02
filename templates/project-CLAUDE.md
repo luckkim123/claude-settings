@@ -22,6 +22,7 @@
 | 상황 | 참조 파일 |
 |:---|:---|
 | (예) 코딩 스타일 | `.claude/rules/style-guide.md` |
+| 다단계 리팩토링 phase 진행 | `.claude/rules/refactor-workflow.md` (templates에서 복사) |
 
 ---
 

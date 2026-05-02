@@ -18,6 +18,7 @@ cat ~/claude-settings/templates/project-gitignore >> .gitignore
 | `project-settings.json` | `<project>/.claude/settings.json` | Project-level hooks/permissions (이 프로젝트에만 적용) |
 | `project-CLAUDE.md` | `<project>/CLAUDE.md` | Project-specific 지침. Claude Code가 자동 로드 |
 | `project-gitignore` | `<project>/.gitignore`에 append | `.claude/settings.local.json` 같은 머신별 파일 제외 |
+| `project-refactor-workflow.md` | `<project>/.claude/rules/refactor-workflow.md` | 다단계 리팩토링의 4축 추적(branch/commit/CHANGELOG/PR) 규율 |
 
 ## 원칙
 
