@@ -86,11 +86,11 @@ link_or_copy() {
 # 2. user-level settings.json
 link_or_copy "$REPO_DIR/claude/settings.json" "$CLAUDE_HOME/settings.json"
 
-# 3. mcp.json — render template (substitute ${VAR} from secrets.env if present)
+# 3. mcp.json — render template (substitute ${VAR} from secrets.env if present).
+#    Idempotent: skip backup + rewrite when rendered content matches the existing file.
 SECRETS_FILE="$REPO_DIR/secrets/secrets.env"
 TEMPLATE="$REPO_DIR/claude/mcp.template.json"
 if [[ -f "$TEMPLATE" ]]; then
-  backup_if_needed "$CLAUDE_HOME/mcp.json"
   if [[ $DRY_RUN -eq 1 ]]; then
     log "would render: $CLAUDE_HOME/mcp.json"
   else
@@ -112,9 +112,14 @@ if [[ -f "$TEMPLATE" ]]; then
     if [[ "$content" == *'${'* ]]; then
       log "WARNING: unresolved \${...} placeholders remain in mcp.json — check secrets/secrets.env"
     fi
-    printf '%s\n' "$content" > "$CLAUDE_HOME/mcp.json"
-    chmod 600 "$CLAUDE_HOME/mcp.json"
-    log "rendered: $CLAUDE_HOME/mcp.json (perm 600)"
+    if [[ -f "$CLAUDE_HOME/mcp.json" ]] && [[ "$content" == "$(cat "$CLAUDE_HOME/mcp.json")" ]]; then
+      debug "mcp.json unchanged (skip)"
+    else
+      backup_if_needed "$CLAUDE_HOME/mcp.json"
+      printf '%s\n' "$content" > "$CLAUDE_HOME/mcp.json"
+      chmod 600 "$CLAUDE_HOME/mcp.json"
+      log "rendered: $CLAUDE_HOME/mcp.json (perm 600)"
+    fi
   fi
 fi
 

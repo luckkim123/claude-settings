@@ -74,11 +74,11 @@ if (-not (Test-Path $ClaudeHome)) { Run { New-Item -ItemType Directory -Path $Cl
 # 2. settings.json
 Link-OrCopy "$RepoDir/claude/settings.json" "$ClaudeHome/settings.json"
 
-# 3. mcp.json — render template (substitute ${VAR} from secrets.env if present, else copy as-is)
+# 3. mcp.json — render template (substitute ${VAR} from secrets.env if present, else copy as-is).
+#    Idempotent: skip backup + rewrite when rendered content matches the existing file.
 $SecretsFile = "$RepoDir/secrets/secrets.env"
 $Template = "$RepoDir/claude/mcp.template.json"
 if (Test-Path $Template) {
-    Backup-IfNeeded "$ClaudeHome/mcp.json"
     if ($DryRun) {
         Log "would render: $ClaudeHome/mcp.json"
     } else {
@@ -103,8 +103,14 @@ if (Test-Path $Template) {
         if ($content -match '\$\{') {
             Log "WARNING: unresolved `${...} placeholders remain — check secrets/secrets.env"
         }
-        Set-Content -Path "$ClaudeHome/mcp.json" -Value $content -NoNewline
-        Log "rendered: $ClaudeHome/mcp.json"
+        $existing = if (Test-Path -LiteralPath "$ClaudeHome/mcp.json") { Get-Content -LiteralPath "$ClaudeHome/mcp.json" -Raw } else { $null }
+        if ($null -ne $existing -and $existing -eq $content) {
+            Debug "mcp.json unchanged (skip)"
+        } else {
+            Backup-IfNeeded "$ClaudeHome/mcp.json"
+            Set-Content -Path "$ClaudeHome/mcp.json" -Value $content -NoNewline
+            Log "rendered: $ClaudeHome/mcp.json"
+        }
     }
 }
 
