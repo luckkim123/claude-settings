@@ -128,7 +128,87 @@ if [[ -f "$PLATFORM_INSTALLER" ]]; then
   run bash "$PLATFORM_INSTALLER"
 fi
 
-# 6. local-overrides hint
+# 6. plugin sync — ensure every enabledPlugin in settings.json is installed at
+#    user scope. Idempotent: plugins already at user scope are skipped; ones
+#    registered at project/local scope (or with stale "unknown" version) are
+#    uninstalled and reinstalled at user scope. Skips cleanly if `claude` or
+#    `python3` is unavailable (e.g. before Claude Code is installed).
+sync_plugins() {
+  if ! command -v claude >/dev/null 2>&1; then
+    log "skip plugin sync: 'claude' not in PATH (install Claude Code, then re-run)"
+    return
+  fi
+  if ! command -v python3 >/dev/null 2>&1; then
+    log "skip plugin sync: 'python3' not available"
+    return
+  fi
+
+  local enabled
+  enabled="$(CLAUDE_HOME="$CLAUDE_HOME" python3 - <<'PY' 2>/dev/null
+import json, os
+try:
+    d = json.load(open(os.path.join(os.environ["CLAUDE_HOME"], "settings.json")))
+    for k, v in d.get("enabledPlugins", {}).items():
+        if v:
+            print(k)
+except Exception:
+    pass
+PY
+)" || true
+
+  if [[ -z "$enabled" ]]; then
+    debug "no enabledPlugins to sync"
+    return
+  fi
+
+  # Ensure canonical marketplace exists if any plugin references it
+  if echo "$enabled" | grep -q "@claude-plugins-official"; then
+    if ! claude plugin marketplace list 2>/dev/null | grep -q claude-plugins-official; then
+      log "adding marketplace: anthropics/claude-plugins-official"
+      run claude plugin marketplace add anthropics/claude-plugins-official >/dev/null 2>&1 \
+        || log "  WARNING: failed to add marketplace; check network"
+    fi
+  fi
+
+  local plugin current ok=0 fixed=0 failed=0
+  while IFS= read -r plugin || [[ -n "$plugin" ]]; do
+    [[ -z "$plugin" ]] && continue
+    current="$(PLUGIN="$plugin" CLAUDE_HOME="$CLAUDE_HOME" python3 - <<'PY' 2>/dev/null
+import json, os
+try:
+    d = json.load(open(os.path.join(os.environ["CLAUDE_HOME"], "plugins", "installed_plugins.json")))
+    es = d.get("plugins", {}).get(os.environ["PLUGIN"], [])
+    print(es[0].get("scope", "") if es else "none")
+except Exception:
+    print("none")
+PY
+)"
+    if [[ "$current" == "user" ]]; then
+      debug "plugin OK (user): $plugin"
+      ok=$((ok+1))
+      continue
+    fi
+    if [[ $DRY_RUN -eq 1 ]]; then
+      log "would re-register at user scope: $plugin (currently: $current)"
+      continue
+    fi
+    if [[ "$current" != "none" && "$current" != "user" ]]; then
+      claude plugin uninstall -s "$current" -y "$plugin" >/dev/null 2>&1 || true
+    fi
+    if claude plugin install -s user "$plugin" >/dev/null 2>&1; then
+      log "plugin reinstalled (user): $plugin"
+      fixed=$((fixed+1))
+    else
+      log "  WARNING: failed to install: $plugin"
+      failed=$((failed+1))
+    fi
+  done <<< "$enabled"
+
+  log "plugin sync: $ok already user-scope, $fixed fixed, $failed failed"
+}
+sync_plugins
+
+# 7. local-overrides hint
 LOCAL_FILE="$CLAUDE_HOME/settings.local.json"
 if [[ ! -e "$LOCAL_FILE" ]]; then
   log "hint: no $LOCAL_FILE — see templates/settings.local.example.json for per-machine plugin overrides"

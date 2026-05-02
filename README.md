@@ -44,7 +44,7 @@ To get future updates: `git pull`. No re-install needed (unless you added new se
 
 ### What is NOT here
 
-- `~/.claude/plugins/` — plugins auto-sync via Claude Code's marketplace; tracking them in git would fight the harness
+- `~/.claude/plugins/` plugin **code** — fetched from marketplaces by `claude` itself (tracking the binary blobs in git would fight the harness). The installer *does* ensure each `enabledPlugin` listed in `settings.json` is installed at **user scope** so it loads from any directory — see "Plugin sync" below.
 - `~/.claude/settings.local.json` — per-machine overrides (extra plugins, disabled plugins, machine-only permissions); see "Per-machine local plugins" below
 - Project-level `.claude/` directories (e.g. `<repo>/.claude/`) — those belong to that project's git repo (see `templates/`)
 
@@ -138,7 +138,19 @@ claude-settings/
 4. **Symlinks by default, copy fallback** — Unix uses symlinks so `git pull` is enough. Windows tries symlink first, falls back to copy if no admin/Developer Mode.
 5. **OS gating** — anything that only makes sense on one OS goes under `platform/<os>/`. The main installer skips others automatically.
 6. **Document the path** — when you add a new file, add a row to the "What lives where" table above.
-7. **Plugins are not tracked** — `~/.claude/plugins/` is auto-synced by Claude Code. Listing plugin names inside `claude/settings.json` (`enabledPlugins`) is the only thing we sync about them.
+7. **Plugin code is not tracked, but registration is enforced** — only `enabledPlugins` in `claude/settings.json` is in git. The installer (`install.sh` step 6) reads that list and ensures each plugin is installed at **user scope** (so it loads from any working directory). Idempotent: plugins already at user scope are skipped; plugins at `project`/`local` scope or missing get re-registered. Resolves the common gotcha where settings.json says "enabled" but `installed_plugins.json` has stale `project`-scoped entries from an earlier Claude Code install.
+
+---
+
+## Plugin sync
+
+`install.sh` step 6 calls `claude plugin install -s user <plugin>@<marketplace>` for each plugin under `enabledPlugins` that isn't already at user scope. Steps:
+
+1. If `claude` (CLI) or `python3` is missing → skip with a hint, install Claude Code first.
+2. Ensure the canonical Anthropic marketplace is registered (`anthropics/claude-plugins-official`) when any enabled plugin uses it.
+3. For each enabled plugin: read its current scope from `~/.claude/plugins/installed_plugins.json`. If `user` → skip. Otherwise → uninstall from the wrong scope, install at user scope.
+
+Run again any time after editing `enabledPlugins` — only the diff is applied.
 
 ---
 
