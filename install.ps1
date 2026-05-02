@@ -2,7 +2,7 @@
 # Usage: pwsh ./install.ps1 [-Copy] [-DryRun] [-Verbose]
 #   -Copy     Force copy mode (default tries symlink, falls back to copy)
 #   -DryRun   Show actions without executing
-#   -Verbose  Print extra detail (idempotent skips)
+#   -Verbose  Print extra detail (idempotent skips, resolved secrets count)
 #
 # Note: Symbolic links on Windows require either admin privileges or
 #       Developer Mode enabled (Settings > Privacy > For developers).
