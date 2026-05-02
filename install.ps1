@@ -1,14 +1,16 @@
 # claude-settings installer (Windows / PowerShell 7+)
-# Usage: pwsh ./install.ps1 [-Copy] [-DryRun]
+# Usage: pwsh ./install.ps1 [-Copy] [-DryRun] [-Verbose]
 #   -Copy     Force copy mode (default tries symlink, falls back to copy)
 #   -DryRun   Show actions without executing
+#   -Verbose  Print extra detail (idempotent skips)
 #
 # Note: Symbolic links on Windows require either admin privileges or
 #       Developer Mode enabled (Settings > Privacy > For developers).
 
 param(
     [switch]$Copy,
-    [switch]$DryRun
+    [switch]$DryRun,
+    [switch]$Verbose
 )
 
 $ErrorActionPreference = "Stop"
@@ -16,10 +18,18 @@ $RepoDir = $PSScriptRoot
 $ClaudeHome = Join-Path $env:USERPROFILE ".claude"
 $BackupDir = Join-Path $ClaudeHome (".backup-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
 
-function Log([string]$msg) { Write-Host "[install] $msg" }
+function Log([string]$msg)   { Write-Host "[install] $msg" }
+function Debug([string]$msg) { if ($Verbose) { Write-Host "[debug]   $msg" } }
 function Run([scriptblock]$block) {
     if ($DryRun) { Write-Host "[dry-run] $($block.ToString().Trim())" }
     else { & $block }
+}
+
+function Already-Linked([string]$target, [string]$src) {
+    if (-not (Test-Path -LiteralPath $target)) { return $false }
+    $item = Get-Item -LiteralPath $target -Force
+    if (-not $item.LinkType) { return $false }
+    return ($item.Target -eq $src) -or ($item.Target -contains $src)
 }
 
 function Backup-IfNeeded([string]$target) {
@@ -36,6 +46,10 @@ function Backup-IfNeeded([string]$target) {
 
 function Link-OrCopy([string]$src, [string]$dest) {
     if (-not (Test-Path -LiteralPath $src)) { Log "skip (missing source): $src"; return }
+    if (-not $Copy -and (Already-Linked $dest $src)) {
+        Debug "already linked: $dest -> $src (skip)"
+        return
+    }
     Backup-IfNeeded $dest
     $useCopy = $Copy
     if (-not $useCopy) {
@@ -77,11 +91,15 @@ if (Test-Path $Template) {
             }
         }
         $content = Get-Content $Template -Raw
+        $resolved = 0
         $content = [regex]::Replace($content, '\$\{(\w+)\}', {
             param($m)
-            if ($env_table.ContainsKey($m.Groups[1].Value)) { $env_table[$m.Groups[1].Value] }
-            else { $m.Value }
+            if ($env_table.ContainsKey($m.Groups[1].Value)) {
+                $script:resolved++
+                $env_table[$m.Groups[1].Value]
+            } else { $m.Value }
         })
+        Debug "resolved $resolved `${VAR} placeholder(s) from secrets.env"
         if ($content -match '\$\{') {
             Log "WARNING: unresolved `${...} placeholders remain — check secrets/secrets.env"
         }
@@ -90,11 +108,17 @@ if (Test-Path $Template) {
     }
 }
 
-# 5. platform-specific (Windows extras, if any)
+# 4. platform-specific (Windows extras, if any)
 $PlatformInstaller = "$RepoDir/platform/windows/install.ps1"
 if (Test-Path $PlatformInstaller) {
     Log "running platform installer: windows"
     Run { & $PlatformInstaller }
 }
 
-Log "done."
+# 5. local-overrides hint
+$LocalFile = Join-Path $ClaudeHome "settings.local.json"
+if (-not (Test-Path -LiteralPath $LocalFile)) {
+    Log "hint: no $LocalFile - see templates/settings.local.example.json for per-machine plugin overrides"
+}
+
+Log "done. backup dir created only if a non-symlink file was overwritten."
