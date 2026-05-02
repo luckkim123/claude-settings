@@ -13,13 +13,14 @@ The promise: **fix or improve a setting on one machine, push, then `git pull` on
 git clone https://github.com/luckkim123/claude-settings.git ~/claude-settings
 cd ~/claude-settings
 
-# 2. Create your local secrets file (never committed)
-cp secrets/secrets.example.env secrets/secrets.env
-$EDITOR secrets/secrets.env   # fill in real API keys
-
-# 3. Run the installer
+# 2. Run the installer
 ./install.sh                  # macOS / Linux
 # pwsh ./install.ps1          # Windows
+
+# (Optional) If you later add an MCP server that needs an API key:
+#   cp secrets/secrets.example.env secrets/secrets.env
+#   $EDITOR secrets/secrets.env
+#   ./install.sh   # re-render mcp.json
 ```
 
 That's it. `~/.claude/settings.json` and `~/.tmux.conf` are now symlinks pointing into the repo. `~/.claude/mcp.json` is rendered from the template using your `secrets.env`.
@@ -58,11 +59,13 @@ machine A: edit something                  machine B (and C, D, ...)
   git commit -am "msg" && push  ───┘         # automatically
 ```
 
-If you change `mcp.template.json` or add a new secret:
+If you add a new MCP server that requires an API key:
 
 ```
-# on machine B after pulling:
-$EDITOR secrets/secrets.env       # add the new key
+# 1. on the editing machine: add server entry to claude/mcp.template.json
+#    using ${VAR_NAME} placeholder + add VAR_NAME to secrets/secrets.example.env
+# 2. on each machine after pulling:
+$EDITOR secrets/secrets.env       # add the real value
 ./install.sh                      # re-renders mcp.json
 ```
 

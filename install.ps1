@@ -60,18 +60,20 @@ if (-not (Test-Path $ClaudeHome)) { Run { New-Item -ItemType Directory -Path $Cl
 # 2. settings.json
 Link-OrCopy "$RepoDir/claude/settings.json" "$ClaudeHome/settings.json"
 
-# 3. mcp.json — render template with secrets (always copy)
+# 3. mcp.json — render template (substitute ${VAR} from secrets.env if present, else copy as-is)
 $SecretsFile = "$RepoDir/secrets/secrets.env"
 $Template = "$RepoDir/claude/mcp.template.json"
-if ((Test-Path $SecretsFile) -and (Test-Path $Template)) {
+if (Test-Path $Template) {
     Backup-IfNeeded "$ClaudeHome/mcp.json"
     if ($DryRun) {
         Log "would render: $ClaudeHome/mcp.json"
     } else {
         $env_table = @{}
-        Get-Content $SecretsFile | ForEach-Object {
-            if ($_ -match '^\s*([^#=\s][^=]*)=(.*)$') {
-                $env_table[$matches[1].Trim()] = $matches[2].Trim()
+        if (Test-Path $SecretsFile) {
+            Get-Content $SecretsFile | ForEach-Object {
+                if ($_ -match '^\s*([^#=\s][^=]*)=(.*)$') {
+                    $env_table[$matches[1].Trim()] = $matches[2].Trim()
+                }
             }
         }
         $content = Get-Content $Template -Raw
@@ -80,11 +82,12 @@ if ((Test-Path $SecretsFile) -and (Test-Path $Template)) {
             if ($env_table.ContainsKey($m.Groups[1].Value)) { $env_table[$m.Groups[1].Value] }
             else { $m.Value }
         })
+        if ($content -match '\$\{') {
+            Log "WARNING: unresolved `${...} placeholders remain — check secrets/secrets.env"
+        }
         Set-Content -Path "$ClaudeHome/mcp.json" -Value $content -NoNewline
         Log "rendered: $ClaudeHome/mcp.json"
     }
-} elseif (Test-Path $Template) {
-    Log "WARNING: $SecretsFile not found. Copy secrets/secrets.example.env -> secrets/secrets.env and fill in keys."
 }
 
 # 5. platform-specific (Windows extras, if any)

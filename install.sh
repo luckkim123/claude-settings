@@ -68,28 +68,31 @@ link_or_copy() {
 # 2. user-level settings.json
 link_or_copy "$REPO_DIR/claude/settings.json" "$CLAUDE_HOME/settings.json"
 
-# 3. mcp.json — render template with secrets (always copy, never symlink — has live keys)
+# 3. mcp.json — render template (substitute ${VAR} from secrets.env if present, else copy as-is)
 SECRETS_FILE="$REPO_DIR/secrets/secrets.env"
 TEMPLATE="$REPO_DIR/claude/mcp.template.json"
-if [[ -f "$SECRETS_FILE" && -f "$TEMPLATE" ]]; then
+if [[ -f "$TEMPLATE" ]]; then
   backup_if_needed "$CLAUDE_HOME/mcp.json"
   if [[ $DRY_RUN -eq 1 ]]; then
     log "would render: $CLAUDE_HOME/mcp.json"
   else
-    set -a; source "$SECRETS_FILE"; set +a
     content="$(cat "$TEMPLATE")"
-    while IFS='=' read -r key _; do
-      [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
-      key="${key// /}"
-      value="${!key:-}"
-      content="${content//\$\{${key}\}/${value}}"
-    done < "$SECRETS_FILE"
+    if [[ -f "$SECRETS_FILE" ]]; then
+      set -a; source "$SECRETS_FILE"; set +a
+      while IFS='=' read -r key _; do
+        [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
+        key="${key// /}"
+        value="${!key:-}"
+        content="${content//\$\{${key}\}/${value}}"
+      done < "$SECRETS_FILE"
+    fi
+    if [[ "$content" == *'${'* ]]; then
+      log "WARNING: unresolved \${...} placeholders remain in mcp.json — check secrets/secrets.env"
+    fi
     printf '%s\n' "$content" > "$CLAUDE_HOME/mcp.json"
     chmod 600 "$CLAUDE_HOME/mcp.json"
     log "rendered: $CLAUDE_HOME/mcp.json (perm 600)"
   fi
-elif [[ -f "$TEMPLATE" ]]; then
-  log "WARNING: $SECRETS_FILE not found. Copy secrets/secrets.example.env -> secrets/secrets.env and fill in keys, then re-run."
 fi
 
 # 4. shell config (Unix only)
