@@ -114,14 +114,27 @@ if (Test-Path $Template) {
     }
 }
 
-# 4. platform-specific (Windows extras, if any)
+# 4. user-scope skills — symlink each subdirectory individually so we don't
+#    clobber any other skills the user has under ~/.claude/skills/.
+$SkillsRoot = "$RepoDir/skills"
+if (Test-Path -LiteralPath $SkillsRoot) {
+    $SkillsDest = Join-Path $ClaudeHome "skills"
+    if (-not (Test-Path -LiteralPath $SkillsDest)) {
+        Run { New-Item -ItemType Directory -Path $SkillsDest -Force | Out-Null }
+    }
+    Get-ChildItem -LiteralPath $SkillsRoot -Directory | ForEach-Object {
+        Link-OrCopy $_.FullName (Join-Path $SkillsDest $_.Name)
+    }
+}
+
+# 5. platform-specific (Windows extras, if any)
 $PlatformInstaller = "$RepoDir/platform/windows/install.ps1"
 if (Test-Path $PlatformInstaller) {
     Log "running platform installer: windows"
     Run { & $PlatformInstaller }
 }
 
-# 5. local-overrides hint
+# 6. local-overrides hint
 $LocalFile = Join-Path $ClaudeHome "settings.local.json"
 if (-not (Test-Path -LiteralPath $LocalFile)) {
     Log "hint: no $LocalFile - see templates/settings.local.example.json for per-machine plugin overrides"

@@ -28,7 +28,7 @@ Me, six months from now, asking why the install script behaves a certain way. Or
 1. Editing `claude/settings.json` affects every machine on next `git pull`. Ask: is this truly common, or per-machine?
 2. Editing `shell/tmux.conf` reloads automatically only on machines that re-source. Document non-trivial changes inline.
 3. `install.sh` and `install.ps1` should stay behaviorally equivalent. If you change one, change the other.
-4. Any new file under `claude/` or `shell/` needs a corresponding `link_or_copy` line in both installers and a row in the README "What lives where" table.
+4. Any new file under `claude/`, `shell/`, or new directory under `skills/` needs a corresponding `link_or_copy` line in both installers and a row in the README "What lives where" table. (For `skills/`, the installer iterates subdirectories — adding a new skill folder is sufficient, no installer edit needed.)
 5. Idempotency is non-negotiable: `./install.sh` re-run on an already-installed machine must be a no-op (no backups, no churn).
 
 ## Plugin reconciliation

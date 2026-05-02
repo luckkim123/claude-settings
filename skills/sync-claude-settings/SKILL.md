@@ -1,0 +1,171 @@
+---
+name: sync-claude-settings
+description: Use when syncing the personal ~/claude-settings repo across machines — pulling new commits, investigating cross-machine plugin drift, re-running install.sh, or auditing whether the local machine matches the repo's intended state. Triggers on phrases like "claude-settings 동기화", "settings sync", "plugin drift", "install.sh 다시", "settings.local.json", or after returning to a machine that's been offline. Walks the fetch → diff → drift-check → install → verify → bug-triage cycle. Asks before any non-idempotent action (commits, pushes, new-file writes, cross-repo template adoption).
+---
+
+# sync-claude-settings
+
+Walks the analysis-and-apply loop for the personal `~/claude-settings` repo across machines. Built from the cycle that revealed the `mcp.json` idempotency bug and the 6-plugin drift on the obsidian-vault Mac (2026-05-02).
+
+This skill is **rigid** — follow the procedure in order. The procedure exists because I previously skipped step 6 (post-install verification) and missed an idempotency regression for a full day.
+
+## Pre-flight (abort if any fails)
+
+- `~/claude-settings/` is a git repo with `origin` set
+- `claude` CLI on PATH (otherwise the plugin-sync sub-step skips with a warning, which is fine but flag it)
+- `~/claude-settings/` working tree is clean — if dirty, **stop and surface the dirty files to the user**. Do not pull, do not run install.sh on a dirty tree.
+
+## Procedure
+
+### 1. Fetch incoming
+
+```bash
+cd ~/claude-settings && git fetch && git status -sb
+```
+
+- `0 ahead, 0 behind` → no incoming. Skip step 2 + 3, jump to step 4 (drift checks still run).
+- Behind only → list incoming commits: `git log --oneline HEAD..@{u}`.
+- Ahead only → unpushed local commits already exist. Surface them; do not pull-rebase silently.
+- Diverged → bail to user. Do not auto-merge.
+
+### 2. Analyze the incoming diff
+
+For each new commit (`git show --stat <sha>`), classify which subsystem it touches:
+
+| Path touched | Implication |
+|---|---|
+| `install.sh` / `install.ps1` | Re-run `./install.sh --verbose` after pull (step 5). Both files should change together — flag if only one did. |
+| `claude/settings.json` | `enabledPlugins` may have shifted. Step 4b/4c will catch it. |
+| `claude/mcp.template.json` | New `${VAR}` may need adding to `secrets.env`. Step 4d will catch unresolved placeholders. |
+| `templates/*` | Template only — not auto-applied. Holds for step 9 (adoption decision). |
+| `shell/tmux.conf` | Reload step needed: `tmux source-file ~/.tmux.conf` after install. |
+| `skills/*` | New skill added — re-running install.sh symlinks it. Mention to user so they re-launch the session to pick it up. |
+
+### 3. Pull
+
+```bash
+git pull --ff-only
+```
+
+If non-FF, bail. Never `--rebase` autonomously when local commits exist.
+
+### 4. Drift checks (always run, even if step 1 found 0 incoming)
+
+**4a. Symlinks intact**
+
+```bash
+ls -la ~/.claude/settings.json ~/.tmux.conf 2>&1
+readlink ~/.claude/settings.json
+```
+
+Both should resolve into `~/claude-settings/`. If not symlinked or broken, step 5 (install.sh) will repair.
+
+**4b. Plugins forward (common pool installed?)**
+
+```bash
+jq -r '.enabledPlugins | keys[]' ~/claude-settings/claude/settings.json | sort > /tmp/enabled.txt
+jq -r '.plugins | keys[]' ~/.claude/plugins/installed_plugins.json | sort > /tmp/installed.txt
+comm -23 /tmp/enabled.txt /tmp/installed.txt
+```
+
+Empty = good. Non-empty = step 5's `sync_plugins` will install them.
+
+**4c. Plugins reverse (extras unaccounted for?)**
+
+```bash
+comm -13 /tmp/enabled.txt /tmp/installed.txt
+```
+
+Each entry = a plugin user-installed on this machine but not in the common pool. For each such plugin:
+
+- Check `~/.claude/settings.local.json` for an entry. If present → fine, machine extra is registered.
+- If `settings.local.json` doesn't exist OR doesn't list the plugin → **ask user**: "Plugin X is installed but not registered. Per-machine (add to settings.local.json), promote to common (edit repo settings.json), or leave unregistered?"
+- Default recommendation: per-machine. Promote to common only when the user confirms the same plugin is wanted on every machine they use (CLAUDE.md "Plugin reconciliation" rule).
+
+**4d. mcp.json secrets clean**
+
+```bash
+grep -c '\${' ~/.claude/mcp.json    # must be 0 (all placeholders resolved)
+grep '\$' ~/claude-settings/claude/mcp.template.json | head -5    # template should have ${VAR}, never raw values
+```
+
+If `mcp.json` has unresolved `${VAR}`, prompt user to add the missing secret to `secrets/secrets.env` and re-run install.sh.
+
+### 5. Run installer
+
+```bash
+cd ~/claude-settings && ./install.sh --verbose
+```
+
+Idempotent — safe to run unconditionally. Capture full output for step 6.
+
+### 6. Post-install verification (CRITICAL — this is the step I previously skipped)
+
+Run install.sh **a second time** and check:
+
+- `mcp.json` line says `unchanged (skip)`, NOT `rendered:` (otherwise: idempotency regression — go to step 7)
+- Symlink lines all say `already linked` in verbose mode (otherwise: relink churn)
+- Plugin sync line ends `0 fixed, 0 failed`
+- Zero new directories under `~/.claude/.backup-*` from the past minute. Use a portable ISO timestamp — `bfs` (the find on recent macOS) rejects `"1 minute ago"`:
+  ```bash
+  REF=$(date -u -v-1M +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null \
+        || date -u -d '1 minute ago' +'%Y-%m-%dT%H:%M:%SZ')
+  find ~/.claude -maxdepth 1 -name '.backup-*' -newermt "$REF"
+  ```
+
+If any check fails → step 7. If all pass → step 8.
+
+### 7. Bug triage (only if step 6 found regressions)
+
+- Diagnose. Read the relevant section of `install.sh`.
+- Fix in `install.sh` AND `install.ps1` together (CLAUDE.md "behaviorally equivalent" rule). If you can't mirror to install.ps1 (e.g. logic doesn't translate), explicitly note the divergence in the commit message.
+- Local commit autonomously, conventional-commits format: `fix(install): <one-line>` with body explaining root cause + fix + verification.
+- Re-run step 6 to confirm the fix.
+- Hold local commit for step 8.
+
+### 8. Push gate
+
+If `git log --oneline @{u}..HEAD` shows local commits:
+
+- List them to the user
+- Ask explicitly: "Push N commit(s) to origin/main? (CLAUDE.md requires explicit confirmation)"
+- On yes: `git push origin main`
+- On no: leave for user
+
+Never push autonomously, even in auto mode. CLAUDE.md governance overrides auto mode.
+
+### 9. Template adoption (only if step 2 flagged a `templates/` change)
+
+For each new template:
+
+- Show the user what's new + what it's for
+- Ask: "Adopt in <project> now, or leave for later?"
+- On yes:
+  - `cp <template> <project>/.claude/rules/<name>.md`
+  - **Stage ONLY the new file** — `git add <project>/.claude/rules/<name>.md`. Never `git add -A` in someone else's repo.
+  - Commit with `docs: adopt <name> rule from claude-settings template` body referencing the source SHA.
+  - Do NOT push — that repo's remote is separate (often org-owned) and outside this skill's authority.
+
+## Red flags (STOP if you catch yourself thinking these)
+
+| Thought | Reality |
+|---|---|
+| "Auto mode is on, I can push" | CLAUDE.md "Push only on explicit instruction" wins. Auto mode says so itself: "shared systems still need explicit user confirmation." |
+| "I'll amend the previous commit to bundle the fix" | CLAUDE.md "Do not amend or force-push commits already on origin/main." |
+| "These per-machine extras might also help on the other machine — promote to common" | "Plugin reconciliation": wait until the *other* machine actually adopts. Ask before promoting. |
+| "settings.local.json is per-machine, I can rewrite it" | The user owns this file. Adding entries is fine; deleting/restructuring needs a yes. |
+| "install.sh changed, I'll skip install.ps1 since I can't test on Windows" | Mirror the change anyway. Note "untested on Windows" in the commit body — but mirror. The "behaviorally equivalent" rule has no test-availability exception. |
+| "The other repo has uncommitted changes, I'll stash before adopting the template" | Never `git stash` someone else's tree. Stage only the file you're adding (step 9). |
+| "Skip the second install.sh run — first one passed" | That's exactly how the mcp.json idempotency bug went undetected for a day. Step 6 is non-negotiable. |
+
+## Outputs the user expects after a run
+
+A short summary table:
+
+| | |
+|---|---|
+| Incoming commits applied | `<sha range or "none">` |
+| Drift findings | `<list, or "none">` |
+| Actions taken | `<commits, file writes, install runs>` |
+| Local commits awaiting push | `<list, or "none">` — with explicit ask if non-empty |
+| Adoption questions | `<list, or "none">` |

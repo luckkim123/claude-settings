@@ -126,6 +126,17 @@ fi
 # 4. shell config (Unix only)
 [[ -f "$REPO_DIR/shell/tmux.conf" ]] && link_or_copy "$REPO_DIR/shell/tmux.conf" "$HOME/.tmux.conf"
 
+# 4b. user-scope skills — symlink each subdirectory individually so we don't
+#     clobber any other skills the user has under ~/.claude/skills/.
+if [[ -d "$REPO_DIR/skills" ]]; then
+  run mkdir -p "$CLAUDE_HOME/skills"
+  for skill_dir in "$REPO_DIR/skills"/*/; do
+    [[ -d "$skill_dir" ]] || continue
+    skill_name="$(basename "$skill_dir")"
+    link_or_copy "${skill_dir%/}" "$CLAUDE_HOME/skills/$skill_name"
+  done
+fi
+
 # 5. platform-specific extra steps
 PLATFORM_INSTALLER="$REPO_DIR/platform/$PLATFORM/install.sh"
 if [[ -f "$PLATFORM_INSTALLER" ]]; then

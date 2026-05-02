@@ -36,6 +36,7 @@ To get future updates: `git pull`. No re-install needed (unless you added new se
 | `claude/settings.json` | `~/.claude/settings.json` | User-level Claude Code settings (hooks, plugins, thinking, permissions) |
 | `claude/mcp.template.json` | rendered into `~/.claude/mcp.json` | MCP server config — `${VAR}` placeholders filled from `secrets.env` |
 | `shell/tmux.conf` | `~/.tmux.conf` | tmux config (Unix only) |
+| `skills/<name>/` | `~/.claude/skills/<name>/` | User-scope Claude Code skills. Each subdirectory symlinked individually so other ad-hoc skills under `~/.claude/skills/` are left untouched. |
 | `platform/macos/` | (varies) | macOS-only extras |
 | `platform/linux/` | (varies) | Linux-only extras |
 | `platform/windows/` | (varies) | Windows-only extras |
