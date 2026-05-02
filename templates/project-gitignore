@@ -1,0 +1,9 @@
+# --- Claude Code (per-project) ---
+.claude/settings.local.json
+.claude/.credentials.json
+.claude/.backup-*
+.claude/worktrees/
+
+# log files Claude Code may write
+.claude/*.jsonl
+.claude/*.log

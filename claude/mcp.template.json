@@ -1,0 +1,20 @@
+{
+  "description": "MCP servers — rendered from this template + secrets/secrets.env by install.sh",
+  "globalServers": {
+    "xinzhongyouhai-mcp-sequentialthinking-tools": {
+      "type": "http",
+      "url": "https://server.smithery.ai/@xinzhongyouhai/mcp-sequentialthinking-tools/mcp?api_key=${SMITHERY_API_KEY}&profile=${SMITHERY_PROFILE}",
+      "description": "Sequential thinking tools for complex reasoning"
+    },
+    "upstash-context-7-mcp": {
+      "type": "http",
+      "url": "https://server.smithery.ai/@upstash/context7-mcp/mcp?api_key=${SMITHERY_API_KEY}&profile=${SMITHERY_PROFILE}",
+      "description": "Context7 — library documentation lookup"
+    },
+    "aakarsh-sasi-memory-bank-mcp": {
+      "type": "http",
+      "url": "https://server.smithery.ai/@aakarsh-sasi/memory-bank-mcp/mcp?api_key=${SMITHERY_API_KEY}&profile=${SMITHERY_PROFILE}",
+      "description": "Memory bank for persistent context storage"
+    }
+  }
+}

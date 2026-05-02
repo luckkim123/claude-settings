@@ -1,0 +1,27 @@
+# Secrets — never commit real API keys
+secrets/secrets.env
+secrets/*.env
+!secrets/secrets.example.env
+
+# Local overrides (machine-specific)
+*.local.json
+*.local.*
+
+# Generated artifacts (install.sh outputs)
+**/mcp.json
+!claude/mcp.template.json
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Backups
+*.bak
+.backup-*
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo

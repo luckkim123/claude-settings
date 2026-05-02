@@ -1,0 +1,10 @@
+{
+  "$comment": "Project-level Claude Code settings. Only put settings that are meaningful in THIS project. User-level (plugins, thinking, etc.) belongs in ~/claude-settings/claude/settings.json.",
+  "hooks": {
+    "$comment": "Example: PreToolUse hook to protect template files. Delete or replace as needed.",
+    "PreToolUse": []
+  },
+  "permissions": {
+    "$comment": "Project-specific permission overrides. Inherits from ~/.claude/settings.json defaultMode."
+  }
+}
