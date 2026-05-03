@@ -20,5 +20,9 @@
     "superpowers@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
-  "skipAutoPermissionPrompt": true
+  "skipAutoPermissionPrompt": true,
+  "statusLine": {
+    "type": "command",
+    "command": "input=$(cat); model=$(echo \"$input\" | jq -r '.model.display_name'); remaining=$(echo \"$input\" | jq -r '.context_window.remaining_percentage // \"?\"'); dir=$(echo \"$input\" | jq -r '.workspace.current_dir' | xargs basename); echo \"${model}  ctx:${remaining}%  ${dir}\""
+  }
 }
