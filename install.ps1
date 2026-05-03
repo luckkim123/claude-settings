@@ -74,6 +74,9 @@ if (-not (Test-Path $ClaudeHome)) { Run { New-Item -ItemType Directory -Path $Cl
 # 2. settings.json
 Link-OrCopy "$RepoDir/claude/settings.json" "$ClaudeHome/settings.json"
 
+# 2b. user-level CLAUDE.md — universal behavioral rules applied across all projects
+Link-OrCopy "$RepoDir/claude/CLAUDE.md" "$ClaudeHome/CLAUDE.md"
+
 # 3. mcp.json — render template (substitute ${VAR} from secrets.env if present, else copy as-is).
 #    Idempotent: skip backup + rewrite when rendered content matches the existing file.
 $SecretsFile = "$RepoDir/secrets/secrets.env"

@@ -34,6 +34,7 @@ To get future updates: `git pull`. No re-install needed (unless you added new se
 | Path in repo | Symlink target | Purpose |
 |---|---|---|
 | `claude/settings.json` | `~/.claude/settings.json` | User-level Claude Code settings (hooks, plugins, thinking, permissions) |
+| `claude/CLAUDE.md` | `~/.claude/CLAUDE.md` | Universal behavioral rules (Karpathy 4 principles + operational limits + workflow) applied across all projects |
 | `claude/mcp.template.json` | rendered into `~/.claude/mcp.json` | MCP server config — `${VAR}` placeholders filled from `secrets.env` |
 | `shell/tmux.conf` | `~/.tmux.conf` | tmux config (Unix only) |
 | `skills/<name>/` | `~/.claude/skills/<name>/` | User-scope Claude Code skills. Each subdirectory symlinked individually so other ad-hoc skills under `~/.claude/skills/` are left untouched. |
@@ -108,6 +109,7 @@ claude-settings/
 │
 ├── claude/                      # ~/.claude/* (Claude Code itself)
 │   ├── settings.json
+│   ├── CLAUDE.md                # universal behavioral rules
 │   └── mcp.template.json
 │
 ├── shell/                       # Unix shell config

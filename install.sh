@@ -86,6 +86,9 @@ link_or_copy() {
 # 2. user-level settings.json
 link_or_copy "$REPO_DIR/claude/settings.json" "$CLAUDE_HOME/settings.json"
 
+# 2b. user-level CLAUDE.md — universal behavioral rules applied across all projects
+link_or_copy "$REPO_DIR/claude/CLAUDE.md" "$CLAUDE_HOME/CLAUDE.md"
+
 # 3. mcp.json — render template (substitute ${VAR} from secrets.env if present).
 #    Idempotent: skip backup + rewrite when rendered content matches the existing file.
 SECRETS_FILE="$REPO_DIR/secrets/secrets.env"
