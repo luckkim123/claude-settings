@@ -85,11 +85,18 @@ Each entry = a plugin user-installed on this machine but not in the common pool.
 **4d. mcp.json secrets clean**
 
 ```bash
-grep -c '\${' ~/.claude/mcp.json    # must be 0 (all placeholders resolved)
-grep '\$' ~/claude-settings/claude/mcp.template.json | head -5    # template should have ${VAR}, never raw values
+# Real placeholders only — excludes `"$comment"` JSON keys
+tpl_vars=$(grep -oE '\$\{[A-Z_][A-Z0-9_]*\}' ~/claude-settings/claude/mcp.template.json | sort -u)
+if [ -z "$tpl_vars" ]; then
+  echo "(4d) no \${VAR} placeholders in template — check vacuous, skipping"
+else
+  echo "(4d) template placeholders: $tpl_vars"
+  unresolved=$(grep -oE '\$\{[A-Z_][A-Z0-9_]*\}' ~/.claude/mcp.json | sort -u)
+  [ -n "$unresolved" ] && echo "UNRESOLVED in rendered mcp.json: $unresolved" || echo "(4d) all placeholders resolved"
+fi
 ```
 
-If `mcp.json` has unresolved `${VAR}`, prompt user to add the missing secret to `secrets/secrets.env` and re-run install.sh.
+If unresolved appears, prompt user to add the missing secret to `secrets/secrets.env` and re-run install.sh. The skip path keeps the check honest until the user actually adds an MCP server with placeholders — previously this passed vacuously on empty `globalServers: {}`.
 
 **4e. claude CLI version up-to-date?**
 
