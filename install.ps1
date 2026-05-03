@@ -19,6 +19,17 @@ $ClaudeHome = Join-Path $env:USERPROFILE ".claude"
 $BackupDir = Join-Path $ClaudeHome (".backup-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
 
 function Log([string]$msg)   { Write-Host "[install] $msg" }
+
+# Runtime dependency check — warn-only so install.ps1 remains idempotent.
+# `jq` is required by the statusLine command in claude/settings.json; without
+# it the status line silently renders as literal template text (e.g. "ctx:%").
+function Check-RuntimeDeps {
+    if (Get-Command jq -ErrorAction SilentlyContinue) { return }
+    Write-Host '[install] WARNING: "jq" not found — statusLine will degrade silently'
+    Write-Host '[install]   install: winget install jqlang.jq  (or: scoop install jq)'
+}
+Check-RuntimeDeps
+
 function Debug([string]$msg) { if ($Verbose) { Write-Host "[debug]   $msg" } }
 function Run([scriptblock]$block) {
     if ($DryRun) { Write-Host "[dry-run] $($block.ToString().Trim())" }

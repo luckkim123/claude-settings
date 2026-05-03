@@ -30,6 +30,19 @@ case "$OS" in
 esac
 
 CLAUDE_HOME="$HOME/.claude"
+
+# Runtime dependency check — warn-only so install.sh remains idempotent.
+# `jq` is required by the statusLine command in claude/settings.json; without
+# it the status line silently renders as literal template text (e.g. "ctx:%").
+check_runtime_deps() {
+  command -v jq >/dev/null 2>&1 && return
+  printf '[install] WARNING: "jq" not found — statusLine will degrade silently\n'
+  case "$PLATFORM" in
+    macos) printf '[install]   install: brew install jq\n' ;;
+    linux) printf '[install]   install: sudo apt-get install -y jq  (Debian/Ubuntu)\n' ;;
+  esac
+}
+check_runtime_deps
 BACKUP_DIR="$CLAUDE_HOME/.backup-$(date +%Y%m%d-%H%M%S)"
 
 log()   { printf '[install] %s\n' "$*"; }
