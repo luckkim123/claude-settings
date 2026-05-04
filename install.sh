@@ -236,7 +236,64 @@ PY
     fi
   done <<< "$enabled"
 
-  log "plugin sync: $ok already user-scope, $fixed fixed, $failed failed"
+  # Reverse drift: uninstall user-scope plugins not in enabledPlugins of either
+  # settings.json (common) or settings.local.json (per-machine). Without this,
+  # plugins removed from settings.json linger forever — the bug that left
+  # context7/explanatory-output-style/security-guidance on pkrc-jetson after
+  # the 21→12 trim.
+  local enabled_local
+  enabled_local="$(CLAUDE_HOME="$CLAUDE_HOME" python3 - <<'PY' 2>/dev/null
+import json, os
+p = os.path.join(os.environ["CLAUDE_HOME"], "settings.local.json")
+if os.path.exists(p):
+    try:
+        d = json.load(open(p))
+        for k, v in d.get("enabledPlugins", {}).items():
+            if v:
+                print(k)
+    except Exception:
+        pass
+PY
+)" || true
+
+  local expected
+  expected="$(printf '%s\n%s\n' "$enabled" "$enabled_local" | sort -u | sed '/^$/d')"
+
+  local installed_user
+  installed_user="$(CLAUDE_HOME="$CLAUDE_HOME" python3 - <<'PY' 2>/dev/null
+import json, os
+p = os.path.join(os.environ["CLAUDE_HOME"], "plugins", "installed_plugins.json")
+try:
+    d = json.load(open(p))
+    for name, entries in d.get("plugins", {}).items():
+        for e in entries:
+            if e.get("scope") == "user":
+                print(name)
+                break
+except Exception:
+    pass
+PY
+)"
+
+  local drift removed=0
+  drift="$(comm -23 <(printf '%s\n' "$installed_user" | sort -u | sed '/^$/d') \
+                    <(printf '%s\n' "$expected"       | sort -u | sed '/^$/d'))"
+
+  while IFS= read -r plugin || [[ -n "$plugin" ]]; do
+    [[ -z "$plugin" ]] && continue
+    if [[ $DRY_RUN -eq 1 ]]; then
+      log "would uninstall (not in any enabledPlugins): $plugin"
+      continue
+    fi
+    if claude plugin uninstall -s user -y "$plugin" >/dev/null 2>&1; then
+      log "plugin uninstalled (drift): $plugin"
+      removed=$((removed+1))
+    else
+      log "  WARNING: failed to uninstall: $plugin"
+    fi
+  done <<< "$drift"
+
+  log "plugin sync: $ok already user-scope, $fixed fixed, $removed removed, $failed failed"
 }
 sync_plugins
 
