@@ -79,8 +79,9 @@ comm -13 /tmp/enabled.txt /tmp/installed.txt
 Each entry = a plugin user-installed on this machine but not in the common pool. For each such plugin:
 
 - Check `~/.claude/settings.local.json` for an entry. If present → fine, machine extra is registered.
-- If `settings.local.json` doesn't exist OR doesn't list the plugin → **ask user**: "Plugin X is installed but not registered. Per-machine (add to settings.local.json), promote to common (edit repo settings.json), or leave unregistered?"
+- If `settings.local.json` doesn't exist OR doesn't list the plugin → **ask user**: "Plugin X is installed but not registered. Per-machine (add to settings.local.json), promote to common (edit repo settings.json), or uninstall (re-run install.sh with `--prune-plugins`)?"
 - Default recommendation: per-machine. Promote to common only when the user confirms the same plugin is wanted on every machine they use (CLAUDE.md "Plugin reconciliation" rule).
+- install.sh defaults to **warn-only** for reverse drift — kept plugins log `plugin drift (kept): ...`. Removal needs the explicit `--prune-plugins` flag, so a pool-trim on machine A never silently uninstalls on machine B.
 
 **4d. mcp.json secrets clean**
 
@@ -139,7 +140,7 @@ Run install.sh **a second time** and check:
 
 - `mcp.json` line says `unchanged (skip)`, NOT `rendered:` (otherwise: idempotency regression — go to step 7)
 - Symlink lines all say `already linked` in verbose mode (otherwise: relink churn)
-- Plugin sync line ends `0 fixed, 0 failed`
+- Plugin sync line: `0 fixed, 0 removed, 0 failed`. The `kept` count may be non-zero — that's expected when reverse drift exists and `--prune-plugins` was not passed (warn-only is the default).
 - Zero new directories under `~/.claude/.backup-*` from the past minute. Use a portable ISO timestamp — `bfs` (the find on recent macOS) rejects `"1 minute ago"`:
   ```bash
   REF=$(date -u -v-1M +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null \

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # claude-settings installer (macOS / Linux)
-# Usage: ./install.sh [--copy] [--dry-run] [--verbose]
-#   --copy     Copy files instead of symlinking (less convenient for sync)
-#   --dry-run  Show actions without executing
-#   --verbose  Print extra detail (idempotent skips, resolved secrets count)
+# Usage: ./install.sh [--copy] [--dry-run] [--verbose] [--prune-plugins]
+#   --copy            Copy files instead of symlinking (less convenient for sync)
+#   --dry-run         Show actions without executing
+#   --verbose         Print extra detail (idempotent skips, resolved secrets count)
+#   --prune-plugins   Uninstall user-scope plugins not in any enabledPlugins
+#                     (default: warn only — keeps drift-kept plugins installed)
 
 set -euo pipefail
 
@@ -11,13 +13,15 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COPY_MODE=0
 DRY_RUN=0
 VERBOSE=0
+PRUNE_PLUGINS=0
 
 for arg in "$@"; do
   case "$arg" in
     --copy) COPY_MODE=1 ;;
     --dry-run) DRY_RUN=1 ;;
     --verbose) VERBOSE=1 ;;
-    -h|--help) sed -n '2,6p' "$0"; exit 0 ;;
+    --prune-plugins) PRUNE_PLUGINS=1 ;;
+    -h|--help) sed -n '2,7p' "$0"; exit 0 ;;
     *) echo "Unknown arg: $arg" >&2; exit 1 ;;
   esac
 done
@@ -236,11 +240,13 @@ PY
     fi
   done <<< "$enabled"
 
-  # Reverse drift: uninstall user-scope plugins not in enabledPlugins of either
-  # settings.json (common) or settings.local.json (per-machine). Without this,
-  # plugins removed from settings.json linger forever — the bug that left
-  # context7/explanatory-output-style/security-guidance on pkrc-jetson after
-  # the 21→12 trim.
+  # Reverse drift: detect user-scope plugins not in enabledPlugins of either
+  # settings.json (common) or settings.local.json (per-machine). Default action
+  # is WARN ONLY — uninstall requires explicit --prune-plugins. Rationale:
+  # trimming the common pool on machine A would otherwise silently uninstall
+  # those plugins on machine B during the next sync, surprising the user.
+  # The warn-only default invites the user to either register as per-machine
+  # in settings.local.json or re-run install.sh --prune-plugins to remove.
   local enabled_local
   enabled_local="$(CLAUDE_HOME="$CLAUDE_HOME" python3 - <<'PY' 2>/dev/null
 import json, os
@@ -275,12 +281,17 @@ except Exception:
 PY
 )"
 
-  local drift removed=0
+  local drift removed=0 kept=0
   drift="$(comm -23 <(printf '%s\n' "$installed_user" | sort -u | sed '/^$/d') \
                     <(printf '%s\n' "$expected"       | sort -u | sed '/^$/d'))"
 
   while IFS= read -r plugin || [[ -n "$plugin" ]]; do
     [[ -z "$plugin" ]] && continue
+    if [[ $PRUNE_PLUGINS -eq 0 ]]; then
+      log "plugin drift (kept): $plugin — register in settings.local.json or re-run with --prune-plugins to remove"
+      kept=$((kept+1))
+      continue
+    fi
     if [[ $DRY_RUN -eq 1 ]]; then
       log "would uninstall (not in any enabledPlugins): $plugin"
       continue
@@ -293,7 +304,7 @@ PY
     fi
   done <<< "$drift"
 
-  log "plugin sync: $ok already user-scope, $fixed fixed, $removed removed, $failed failed"
+  log "plugin sync: $ok already user-scope, $fixed fixed, $removed removed, $kept drift-kept, $failed failed"
 }
 sync_plugins
 
