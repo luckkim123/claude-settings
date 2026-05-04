@@ -91,6 +91,33 @@ grep '\$' ~/claude-settings/claude/mcp.template.json | head -5    # template sho
 
 If `mcp.json` has unresolved `${VAR}`, prompt user to add the missing secret to `secrets/secrets.env` and re-run install.sh.
 
+**4e. claude CLI version up-to-date?**
+
+```bash
+current="$(claude --version 2>/dev/null | awk '{print $1}')"
+latest="$(npm view @anthropic-ai/claude-code version 2>/dev/null)"
+[[ "$current" == "$latest" ]] && echo "current ($current)" || echo "drift: $current → $latest"
+```
+
+If `claude` not on PATH, skip silently — pre-flight already flagged it.
+
+If versions differ, surface the gap and ask before upgrading. install.sh does **not** upgrade the CLI itself — this is a separate, non-idempotent action that needs user confirmation.
+
+Probe whether sudo is needed before showing the upgrade command (don't guess from path patterns — Homebrew prefixes like `/opt/homebrew` are user-writable despite being outside `$HOME`):
+
+```bash
+prefix="$(npm config get prefix)"
+if [[ -w "$prefix/lib/node_modules" && -w "$prefix/bin" ]]; then
+  echo "upgrade: npm i -g @anthropic-ai/claude-code"
+else
+  echo "upgrade: sudo npm i -g @anthropic-ai/claude-code"
+fi
+```
+
+**Why this runs before step 5 (not after):** install.sh's plugin-sync invokes `claude plugin install`, which uses the on-PATH `claude`. Running plugin sync against a stale CLI silently uses old plugin metadata — a quiet way to drift.
+
+After upgrade, re-run `claude --version` to confirm and then proceed to step 5. If the upgrade fails (network, permission, npm registry), surface the error and continue to step 5 anyway — old CLI is better than no install.
+
 ### 5. Run installer
 
 ```bash
@@ -157,6 +184,7 @@ For each new template:
 | "install.sh changed, I'll skip install.ps1 since I can't test on Windows" | Mirror the change anyway. Note "untested on Windows" in the commit body — but mirror. The "behaviorally equivalent" rule has no test-availability exception. |
 | "The other repo has uncommitted changes, I'll stash before adopting the template" | Never `git stash` someone else's tree. Stage only the file you're adding (step 9). |
 | "Skip the second install.sh run — first one passed" | That's exactly how the mcp.json idempotency bug went undetected for a day. Step 6 is non-negotiable. |
+| "I'll auto-upgrade the claude CLI silently" | Non-idempotent. Plugin metadata or APIs can break across major versions and brick the current session. Step 4e requires user confirmation, same as commit/push. |
 
 ## Outputs the user expects after a run
 
@@ -166,6 +194,7 @@ A short summary table:
 |---|---|
 | Incoming commits applied | `<sha range or "none">` |
 | Drift findings | `<list, or "none">` |
+| claude CLI version | `<current — or "X → Y (upgraded)" / "X → Y (deferred)">` |
 | Actions taken | `<commits, file writes, install runs>` |
 | Local commits awaiting push | `<list, or "none">` — with explicit ask if non-empty |
 | Adoption questions | `<list, or "none">` |
