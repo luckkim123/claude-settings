@@ -2,6 +2,10 @@
   "permissions": {
     "defaultMode": "auto"
   },
+  "statusLine": {
+    "type": "command",
+    "command": "input=$(cat); model=$(echo \"$input\" | jq -r '.model.display_name'); remaining=$(echo \"$input\" | jq -r '.context_window.remaining_percentage // \"?\"'); dir=$(echo \"$input\" | jq -r '.workspace.current_dir' | xargs basename); echo \"${model}  ctx:${remaining}%  ${dir}\""
+  },
   "enabledPlugins": {
     "claude-code-setup@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
@@ -9,20 +13,13 @@
     "code-review@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
-    "context7@claude-plugins-official": true,
-    "explanatory-output-style@claude-plugins-official": true,
     "feature-dev@claude-plugins-official": true,
     "github@claude-plugins-official": true,
     "learning-output-style@claude-plugins-official": true,
     "pr-review-toolkit@claude-plugins-official": true,
     "pyright-lsp@claude-plugins-official": true,
-    "security-guidance@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true
   },
-  "alwaysThinkingEnabled": true,
-  "skipAutoPermissionPrompt": true,
-  "statusLine": {
-    "type": "command",
-    "command": "input=$(cat); model=$(echo \"$input\" | jq -r '.model.display_name'); remaining=$(echo \"$input\" | jq -r '.context_window.remaining_percentage // \"?\"'); dir=$(echo \"$input\" | jq -r '.workspace.current_dir' | xargs basename); echo \"${model}  ctx:${remaining}%  ${dir}\""
-  }
+  "alwaysThinkingEnabled": false,
+  "skipAutoPermissionPrompt": true
 }
