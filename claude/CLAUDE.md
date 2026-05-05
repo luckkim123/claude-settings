@@ -96,6 +96,68 @@ Test before commit: "Does every non-obvious statement have something I could poi
 
 ---
 
+## Versioned Release Workflow (preferred for non-trivial features)
+
+When the user proposes a non-trivial change to a versioned package
+(`package.xml`, `setup.py`, `pyproject.toml`, `Cargo.toml`, etc.) — new
+feature, redesign, or breaking refactor — drive it through a numbered
+release cycle rather than ad-hoc commits. This keeps every change
+traceable, reviewable, and reversible.
+
+**The five-stage loop**
+
+1. **Brainstorm → spec**. Use `superpowers:brainstorming` to explore the
+   problem one question at a time, settle 2–3 design decisions, then save
+   a written design doc (`docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`).
+   No code yet.
+2. **Plan**. Use `superpowers:writing-plans` to break the spec into
+   bite-sized, TDD-style tasks (file paths, exact code, expected test
+   output, commit message per task). Save to
+   `docs/superpowers/plans/YYYY-MM-DD-<topic>.md`.
+3. **Execute**. Prefer `superpowers:subagent-driven-development`: one
+   fresh implementer subagent per task, followed by a fresh spec-compliance
+   reviewer **and** a fresh code-quality reviewer. Each task ends in a
+   conventional-commit on the feature branch. The controller does not
+   self-implement; it dispatches and adjudicates reviewer findings.
+4. **Release**. The final task always bumps the version in every
+   manifest, fills the `[Unreleased]` block in `CHANGELOG.md` with
+   Removed / Added / Changed / Verification / Notes, refreshes the
+   user-facing section of `README.md`, and runs the full test suite +
+   build one last time.
+5. **PR**. Push the branch, open a PR with a Summary + Test plan
+   checklist. Manual smoke items live in the checklist as `[ ]` so they
+   gate merge. Merge happens only on explicit user approval, squash mode,
+   to keep main linear.
+
+**Why this works**
+
+- The four artefacts (branch + commit chain + CHANGELOG entry + PR
+  description) stay synchronised, so any future regression is traceable
+  to one commit, one CHANGELOG block, one reviewable PR.
+- Subagents prevent context pollution: a 10-task feature finishes with
+  the controller's context still clean enough to coordinate the release.
+- Spec compliance and code quality are reviewed by *different* fresh
+  agents — each catches issues the other misses (spec drift vs. local
+  craft).
+
+**Anti-patterns**
+
+- Bumping the version inline with feature work. Version bumps belong in
+  the dedicated final task so the diff is always "version + CHANGELOG +
+  README" — easy to audit.
+- Skipping the spec because the change "feels small". Spec-less tasks
+  consistently undershoot edge cases (migration of old config, forward-
+  compat of yaml fields, headless test gotchas).
+- Letting the controller implement to "save time". The controller's
+  judgment degrades after ~3 implementation rounds; subagent dispatch
+  preserves it for the long haul.
+
+**Patch releases (vX.Y.Z+1)** skip stage 1 and use a single-task plan:
+the bug fix + version bump + CHANGELOG patch entry + PR — same gates,
+smaller surface.
+
+---
+
 ## Tradeoff Note
 
 These guidelines bias toward **caution over speed**. For trivial tasks (typo fixes, obvious one-liners), use judgment — not every change needs the full rigor.
@@ -104,5 +166,5 @@ The goal is reducing costly mistakes on non-trivial work, not slowing down simpl
 
 ---
 
-**Last Updated**: 2026-05-04
+**Last Updated**: 2026-05-05
 **Managed by**: [`claude-settings`](https://github.com/luckkim123/claude-settings) — edit at `~/claude-settings/claude/CLAUDE.md`, the symlink picks up changes automatically.
