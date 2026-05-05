@@ -4,7 +4,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "input=$(cat); model=$(echo \"$input\" | jq -r '.model.display_name'); remaining=$(echo \"$input\" | jq -r '.context_window.remaining_percentage // \"?\"'); dir=$(echo \"$input\" | jq -r '.workspace.current_dir' | xargs basename); echo \"${model}  ctx:${remaining}%  ${dir}\""
+    "command": "bash \"$HOME/.claude/statusline-command.sh\""
   },
   "enabledPlugins": {
     "claude-code-setup@claude-plugins-official": true,
