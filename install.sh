@@ -206,6 +206,15 @@ PY
     fi
   fi
 
+  # AX Labs marketplace (mckinsey-pptx for ppt-academic skill)
+  if echo "$enabled" | grep -q "@axlabs"; then
+    if ! claude plugin marketplace list 2>/dev/null | grep -q "^axlabs"; then
+      log "adding marketplace: seulee26/mckinsey-pptx (axlabs)"
+      run claude plugin marketplace add seulee26/mckinsey-pptx >/dev/null 2>&1 \
+        || log "  WARNING: failed to add axlabs marketplace; check network"
+    fi
+  fi
+
   local plugin current ok=0 fixed=0 failed=0
   while IFS= read -r plugin || [[ -n "$plugin" ]]; do
     [[ -z "$plugin" ]] && continue
