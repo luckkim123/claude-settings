@@ -26,3 +26,8 @@ desktop.ini
 .idea/
 *.swp
 *.swo
+
+# Python virtual envs / caches
+**/.venv/
+**/__pycache__/
+*.pyc
