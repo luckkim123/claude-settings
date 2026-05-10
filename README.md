@@ -38,9 +38,11 @@ To get future updates: `git pull`. No re-install needed (unless you added new se
 | `claude/mcp.template.json` | rendered into `~/.claude/mcp.json` | MCP server config — `${VAR}` placeholders filled from `secrets.env` |
 | `shell/tmux.conf` | `~/.tmux.conf` | tmux config (Unix only) |
 | `skills/<name>/` | `~/.claude/skills/<name>/` | User-scope Claude Code skills. Each subdirectory symlinked individually so other ad-hoc skills under `~/.claude/skills/` are left untouched. |
-| `platform/macos/` | (varies) | macOS-only extras |
+| `skills/ppt-academic/` | `~/.claude/skills/ppt-academic/` | Academic presentation generator — wraps the `axlabs-mckinsey-pptx` plugin with Korean academic narrative arcs (defense / paper / lab seminar) and a 3-gate workflow. |
+| `skills/ppt-lecture/` | `~/.claude/skills/ppt-lecture/` | Lecture/teaching slide generator — single-file HTML with light/dark/paper themes, html2canvas PNG export, 8 layouts, 2-gate workflow. |
+| `platform/macos/` | (varies) | macOS-only extras (Homebrew formulae + casks + pip; `font-pretendard` and `python-pptx` for PPT skills) |
 | `platform/linux/` | (varies) | Linux-only extras |
-| `platform/windows/` | (varies) | Windows-only extras |
+| `platform/windows/` | (varies) | Windows-only extras (winget + pip; `sunbk201.Pretendard` and `python-pptx` for PPT skills) |
 | `templates/` | not installed | Boilerplate for new project `.claude/` and `settings.local.json` |
 | `secrets/secrets.env` | (read by installer) | **Gitignored.** Real API keys |
 
