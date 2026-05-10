@@ -157,6 +157,17 @@ if [[ -d "$REPO_DIR/skills" ]]; then
   done
 fi
 
+# 4c. user-scope agents — symlink each .md individually so we don't clobber
+#     any other agents the user has under ~/.claude/agents/.
+if [[ -d "$REPO_DIR/agents" ]]; then
+  run mkdir -p "$CLAUDE_HOME/agents"
+  for agent_file in "$REPO_DIR/agents"/*.md; do
+    [[ -f "$agent_file" ]] || continue
+    agent_name="$(basename "$agent_file")"
+    link_or_copy "$agent_file" "$CLAUDE_HOME/agents/$agent_name"
+  done
+fi
+
 # 5. platform-specific extra steps
 PLATFORM_INSTALLER="$REPO_DIR/platform/$PLATFORM/install.sh"
 if [[ -f "$PLATFORM_INSTALLER" ]]; then
