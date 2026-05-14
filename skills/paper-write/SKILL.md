@@ -31,6 +31,21 @@ Examples:
 4. **`main_tex`** — `<paper_dir>/latex/main.tex`. Path is fixed by convention.
 5. **`bib_file`** — `<paper_dir>/latex/references.bib`.
 
+### Env var resolution in venue YAML
+
+`venues/*.yaml`의 `template_dir` 같은 path 필드에 `${VAR}` 형태가 있으면 다음 우선순위로 resolve:
+
+1. shell env (`os.environ`) — 셸에 export 된 값.
+2. user-scope `~/.claude/CLAUDE.md`의 "Environment Variables" 섹션에 정의된 값.
+3. project-scope `<cwd>/.claude/CLAUDE.md` 또는 `<cwd>/CLAUDE.md`의 "Environment Variables" 섹션.
+
+가장 먼저 발견된 값 사용. 어디에도 없으면 fail loud (`unresolved env var: ${VAR}` — 사용자에게 정의 위치 안내).
+
+권장 변수:
+- `WORKSPACE_TEMPLATE_DIR` — manuscript LaTeX 템플릿 루트 (예: `~/Desktop/workspace/00-09_Meta/01_Templates`).
+
+resolve 후 `~`는 `os.path.expanduser`로 풀고, 결과 경로가 실제로 존재하는지 검증. 없으면 critical finding으로 보고.
+
 Print a 5-line dry-run summary of these resolved values and the loaded venue config before doing anything else. This is Stage 0.
 
 ## 7-Stage Workflow

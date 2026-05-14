@@ -158,6 +158,18 @@ smaller surface.
 
 ---
 
+## Environment Variables
+
+Path variables referenced by skills/configs (e.g., `paper-write` venue YAMLs use `${WORKSPACE_TEMPLATE_DIR}`). Resolve in this order: shell env → this section → project-scope CLAUDE.md.
+
+| Variable | Value | Used by |
+|:---|:---|:---|
+| `WORKSPACE_TEMPLATE_DIR` | `~/Desktop/workspace/00-09_Meta/01_Templates` | `paper-write` venue YAMLs (`template_dir`) |
+
+Variables expand `~` via `os.path.expanduser`. After resolution the resulting path MUST exist — fail loud if not.
+
+---
+
 ## Tradeoff Note
 
 These guidelines bias toward **caution over speed**. For trivial tasks (typo fixes, obvious one-liners), use judgment — not every change needs the full rigor.
@@ -166,5 +178,5 @@ The goal is reducing costly mistakes on non-trivial work, not slowing down simpl
 
 ---
 
-**Last Updated**: 2026-05-05
+**Last Updated**: 2026-05-14
 **Managed by**: [`claude-settings`](https://github.com/luckkim123/claude-settings) — edit at `~/claude-settings/claude/CLAUDE.md`, the symlink picks up changes automatically.

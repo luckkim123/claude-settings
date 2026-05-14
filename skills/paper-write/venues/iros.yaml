@@ -6,7 +6,7 @@ class_options:
   - letterpaper
   - "10 pt"
   - conference
-template_dir: 3_Archive/etc/templates/ieee_conference
+template_dir: ${WORKSPACE_TEMPLATE_DIR}/ieee_conference
 bib_style: IEEEtran
 compile_engine: pdflatex
 extra_packages:

@@ -21,7 +21,7 @@ class_options:
   - oneside
   - 11pt
   - a4paper
-template_dir: 3_Archive/etc/templates/postech_thesis  # vault에 없으면 표준 report 사용
+template_dir: ${WORKSPACE_TEMPLATE_DIR}/postech_thesis  # 없으면 표준 report 사용
 bib_style: plainnat
 compile_engine: pdflatex
 extra_packages:
